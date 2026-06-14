@@ -169,11 +169,12 @@ class 中文名类 : 父类名 {
 ### 语句
 
 
-#### 1. 复制语句
+#### 1. 赋值语句
 
 
 ```java
 myRes = myVal;
+myRes += myVal;
 ```
 
 
