@@ -1156,7 +1156,6 @@ std::string & TScriptMap::toString() {
 
 /******************************************* TScriptObject Begin *************************************************/
 TScriptClassObject::TScriptClassObject(){
-    hasToString = false;
     instanceObject = this;
 }
 TScriptClassObject::~TScriptClassObject() {
@@ -1176,7 +1175,6 @@ void TScriptClassObject::init(const std::string & className, std::shared_ptr<TSc
         p->instanceObject = instanceObject;
         p = (TScriptClassObject*)p->superObject.get();
     }
-    hasToString = false;
 }
 
 
@@ -1222,10 +1220,6 @@ TScriptClassObject & TScriptClassObject::operator = ( const TScriptClassObject &
     className = ref.className;
     superObject = ref.superObject;
     scriptClassEngine = ref.scriptClassEngine;
-    hasToString = false;
-    if(hasToString) {
-        sVal = ref.sVal;
-    }
     return *this;
 }
 TScriptClassEngine * TScriptClassObject::getEngine()
@@ -7034,7 +7028,7 @@ void TScriptEngine::clearVar() {
 }
 
 TScriptValue TScriptEngine::evalScript(const std::string & script, bool isScriptFile) {
-    return scriptEngine->evalScript(script);
+    return scriptEngine->evalScript(script, isScriptFile);
 }
 void TScriptEngine::bindGetVarFunc(get_var_func f) {
     scriptEngine->bindGetVarFunc(f);

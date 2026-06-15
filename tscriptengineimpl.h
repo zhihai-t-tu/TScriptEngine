@@ -204,18 +204,17 @@ private:
 };
 /****************************************** Class RegisteredFunction End *****************************************/
 
-class TScriptClassEngine;
 class TScriptClassObject : public TScriptObject {
 public:
     TScriptClassObject();
-    ~TScriptClassObject();
+    ~TScriptClassObject() override;;
     void init(const std::string & className, std::shared_ptr<TScriptObject> & parentObject);
 
-    bool set(const std::string & name, const TScriptValue & value);
-    TScriptValue get(const std::string & name);
-    std::string getObjectName();
+    virtual bool set(const std::string & name, const TScriptValue & value) override;
+    virtual TScriptValue get(const std::string & name) override;
+    virtual std::string getObjectName() override;
 
-    TScriptValue invoke(const std::string & method, std::vector<TScriptValue> & paramList);
+    virtual TScriptValue invoke(const std::string & method, std::vector<TScriptValue> & paramList) override;
 
     TScriptClassObject & operator = ( const TScriptClassObject & ref);
 
@@ -232,8 +231,6 @@ private:
     std::shared_ptr<TScriptClassEngine> scriptClassEngine;
     std::string className;
     std::shared_ptr<TScriptObject> superObject;
-    bool hasToString;
-    std::string sVal;
     TScriptObject * instanceObject;
 
     friend TScriptClassEngine;
