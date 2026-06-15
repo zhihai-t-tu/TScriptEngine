@@ -2976,7 +2976,7 @@ TScriptValue TScriptGlobalEngine::applyUserFunc(int calllineNo, const std::strin
 
 void TScriptGlobalEngine::initDefaultFunctions()
 {
-    bindUserFunc("getProjectPath", [this]()->TScriptValue{
+    bindUserFunc("getBaseDir", [this]()->TScriptValue{
         return this->getBaseDir();
     });
     bindUserFunc("console", [](TScriptValue&ee)->TScriptValue{

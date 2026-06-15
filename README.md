@@ -86,7 +86,7 @@ milliseconds(),datetime(),date(),time()
 系统函数：
 getProjectPath()
 内置对象生成函数：
-Array();ByteArray();NativeObject(classObject),Map(k1,v1,k2,v2,...)
+Array(),ByteArray(),Map(k1,v1,k2,v2,...)
 ```
 
 
@@ -102,11 +102,11 @@ Array();ByteArray();NativeObject(classObject),Map(k1,v1,k2,v2,...)
         QThread::msleep(value.toLongLong());
         return TScript::TScriptValue();
     });
-    scriptEngine.bindUserFunc(u8"CreateNativeThread", [](TScript::TScriptValue & threadObject)->TScript::TScriptValue{
-        return std::shared_ptr<TScriptNativeObject>(new TScriptNativeThreadObject(threadObject.getNativeObject()));
+    scriptEngine.bindUserFunc(u8"Thread", [](TScript::TScriptValue & threadObject)->TScript::TScriptValue{
+        return std::shared_ptr<TScriptObject>(new TScriptNativeThreadObject(threadObject.getObject()));
     });
-    scriptEngine.bindUserFunc(u8"CreateNativeMutex", []()->TScript::TScriptValue{
-        return std::shared_ptr<TScriptNativeObject>(new TScriptNativeMutexObject());
+    scriptEngine.bindUserFunc(u8"Mutex", []()->TScript::TScriptValue{
+        return std::shared_ptr<TScriptObject>(new TScriptNativeMutexObject());
     });
 ```
 
@@ -227,7 +227,7 @@ if(...) {
 
 
 ```java
-import "/path1/file";	//相对于getProjectPath() + "/lib"
+import "/path1/file";	//相对于getBaseDir() + "/lib"
 import "path1/file";	//相对于当前模块
 import "../path1/file";	//相对于当前模块
 ```
