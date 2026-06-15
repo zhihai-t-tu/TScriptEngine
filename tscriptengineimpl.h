@@ -204,6 +204,40 @@ private:
 };
 /****************************************** Class RegisteredFunction End *****************************************/
 
+class TScriptClassEngine;
+class TScriptClassObject : public TScriptObject {
+public:
+    TScriptClassObject();
+    ~TScriptClassObject();
+    void init(const std::string & className, std::shared_ptr<TScriptObject> & parentObject);
+
+    bool set(const std::string & name, const TScriptValue & value);
+    TScriptValue get(const std::string & name);
+    std::string getObjectName();
+
+    TScriptValue invoke(const std::string & method, std::vector<TScriptValue> & paramList);
+
+    TScriptClassObject & operator = ( const TScriptClassObject & ref);
+
+    TScriptClassEngine * getEngine();
+    void setEngine(std::shared_ptr<TScriptClassEngine> engine);
+
+    TScriptClassObject * getInstanceObject() {
+        return (TScriptClassObject*)instanceObject;
+    }
+    TScriptClassObject * getSuperObject() {
+        return (TScriptClassObject*)superObject.get();
+    }
+private:
+    std::shared_ptr<TScriptClassEngine> scriptClassEngine;
+    std::string className;
+    std::shared_ptr<TScriptObject> superObject;
+    bool hasToString;
+    std::string sVal;
+    TScriptObject * instanceObject;
+
+    friend TScriptClassEngine;
+};
 
 /****************************************** Class TScriptExpression Begin ****************************************/
 class TScriptTokenLocation {
@@ -804,7 +838,6 @@ private:
     TScriptValue evalInternalFuncByteArray(TScriptValue & val, TScriptTreeNode & treeNode);
     TScriptValue evalInternalFuncMap(TScriptValue & val, TScriptTreeNode & treeNode);
     TScriptValue evalInternalFuncObject(TScriptValue & val, TScriptTreeNode & treeNode);
-    TScriptValue evalInternalFuncNativeObject(TScriptValue & val, TScriptTreeNode & treeNode);
     TScriptValue evalInternalFuncChar(TScriptValue & val, TScriptTreeNode & treeNode);
     TScriptValue evalInternalFuncInt(TScriptValue & val, TScriptTreeNode & treeNode);
     TScriptValue evalInternalFuncLongLong(TScriptValue & val, TScriptTreeNode & treeNode);
@@ -850,8 +883,6 @@ private:
 class TScriptFunctionEngine
 {
 public:
-    //parentScriptInterface为TScriptFunction拥有者
-    //查找定义TScriptFunction的TScriptStatementEngine作为parentScriptInterface
     TScriptFunctionEngine(TScriptStatementEngine * ownerScriptStatementEngine, TScriptFunction * scriptFunction, std::vector<TScriptValue> & valueList);
     ~TScriptFunctionEngine() {}
 
@@ -912,8 +943,8 @@ public:
     TScriptClassEngine(TScriptStatementEngine * ownerScriptStatementEngine, TScriptClass * scriptClass);
     ~TScriptClassEngine();
 
-    void setObject(TScriptObject * scriptObject);
-    TScriptObject * getObject();
+    void setObject(TScriptClassObject * scriptObject);
+    TScriptClassObject * getObject();
 
     static std::shared_ptr<TScriptObject> create(TScriptStatementEngine * ownerScriptStatementEngine, TScriptClass * scriptClass, std::vector<TScriptValue> & paramList, bool isInstanceObject = true);
 
@@ -927,7 +958,7 @@ public:
 private:
     TScriptStatementEngine * ownerScriptStatementEngine;
     TScriptClass * scriptClass;
-    TScriptObject * vObj;
+    TScriptClassObject * vObj;
     std::shared_ptr<TScriptStatementEngine> scriptStatementEngine;
 
     friend TScriptClass;

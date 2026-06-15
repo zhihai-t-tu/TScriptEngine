@@ -1,21 +1,3 @@
-class Mutex {
-let mutex;
-function Mutex() {
-	mutex = CreateNativeMutex();
-}
-function lock() {
-	mutex.lock();
-}
-function unlock() {
-	mutex.unlock();
-}
-function trylock() {
-	return mutex.trylock();
-}
-};
-
-
-
 class Runnable {
 	let mutex;
 	function Runnable(m) {
@@ -32,7 +14,7 @@ let mutex = Mutex();
 debug("main1");
 mutex.lock();
 
-let t = CreateNativeThread(NativeObject(Runnable(mutex)));
+let t = Thread(Runnable(mutex));
 t.start();
 sleep(1);
 debug("main2");

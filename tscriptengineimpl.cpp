@@ -87,34 +87,15 @@ std::string charConvertHandwriteStr(char p) {
     return s;
 }
 /****************************************** Function Definiation End *********************************************/
-std::string TScriptNativeObject::getObjectName() {
+std::string TScriptObject::getObjectName() {
     return "NativeObject";
 }
-bool TScriptNativeObject::set(const std::string & name, const TScriptValue & value) {
+bool TScriptObject::set(const std::string & name, const TScriptValue & value) {
     throw TScriptException(getObjectName() + " has no property " + name);
 }
-TScriptValue TScriptNativeObject::get(const std::string & name) {
+TScriptValue TScriptObject::get(const std::string & name) {
     throw TScriptException(getObjectName() + " has no property " + name);
 }
-
-
-class TScriptObjectNativeWrap : public TScriptNativeObject {
-public:
-    TScriptObjectNativeWrap(TScriptValue & objectValue):scriptObject(objectValue.getObject()) {}
-
-    virtual bool set(const std::string & name, const TScriptValue & value) override {
-        return scriptObject->setValue(name, value);
-    }
-    virtual TScriptValue get(const std::string & name) override {
-        return scriptObject->getValue(name);
-    }
-
-    virtual TScriptValue nativeMethod(const std::string & name, std::vector<TScriptValue> & valueList) override {
-        return scriptObject->invoke(0, name, valueList);
-    }
-private:
-    std::shared_ptr<TScriptObject> scriptObject;
-};
 
 void relocationSymbol(TScriptTokenLocations & scriptTokenLocations, TScriptTreeNode & scriptTreeNode) {
     TScriptExpression & expression = scriptTreeNode.get();
@@ -1174,21 +1155,11 @@ std::string & TScriptMap::toString() {
 
 
 /******************************************* TScriptObject Begin *************************************************/
-TScriptObject::TScriptObject(){
+TScriptClassObject::TScriptClassObject(){
     hasToString = false;
     instanceObject = this;
 }
-TScriptObject::TScriptObject(const TScriptObject & ref){
-    instanceObject = this;
-    className = ref.className;
-    superObject = ref.superObject;
-    scriptClassEngine = ref.scriptClassEngine;
-    hasToString = ref.hasToString;
-    if(hasToString) {
-        sVal = ref.sVal;
-    }
-}
-TScriptObject::~TScriptObject() {
+TScriptClassObject::~TScriptClassObject() {
     TScriptFunction * scriptFunction = getEngine()->getInternalFunction("~" + className);
     if(scriptFunction != NULL) {
         std::vector<TScriptValue> paramList;
@@ -1197,57 +1168,57 @@ TScriptObject::~TScriptObject() {
     scriptClassEngine = nullptr;
 }
 
-void TScriptObject::init(const std::string & className, std::shared_ptr<TScriptObject> & parentObject) {
+void TScriptClassObject::init(const std::string & className, std::shared_ptr<TScriptObject> & parentObject) {
     this->className = className;
     this->superObject = parentObject;
-    TScriptObject * p = parentObject.get();
+    TScriptClassObject * p = (TScriptClassObject*)parentObject.get();
     while(p != NULL) {
         p->instanceObject = instanceObject;
-        p = p->superObject.get();
+        p = (TScriptClassObject*)p->superObject.get();
     }
     hasToString = false;
 }
 
 
-bool TScriptObject::setValue(const std::string & name, const TScriptValue & value){
-    TScriptObject * theObject = getInstanceObject();
+bool TScriptClassObject::set(const std::string & name, const TScriptValue & value){
+    TScriptClassObject * theObject = getInstanceObject();
     while(theObject != NULL) {
         if(theObject->getEngine()->hasVar(name)) {
             return theObject->getEngine()->getStatementEngine()->setVarVal(name,value);
         }
-        theObject = theObject->superObject.get();
+        theObject = (TScriptClassObject*)theObject->superObject.get();
     }
 
     throw TScriptException(getInstanceObject()->className + u8": no property " + name);
 }
-TScriptValue TScriptObject::getValue(const std::string & name){
-    TScriptObject * theObject = getInstanceObject();
+TScriptValue TScriptClassObject::get(const std::string & name){
+    TScriptClassObject * theObject = getInstanceObject();
     while(theObject != NULL) {
         if(theObject->getEngine()->hasVar(name)) {
             return theObject->getEngine()->getStatementEngine()->getVarVal(name);
         }
-        theObject = theObject->superObject.get();
+        theObject = (TScriptClassObject*)theObject->superObject.get();
     }
 
     throw TScriptException(getInstanceObject()->className + u8": no property " + name);
 }
-TScriptValue TScriptObject::invoke(int lineno, const std::string & method, std::vector<TScriptValue> & paramList) {
-    TScriptObject * theObject = getInstanceObject();
+TScriptValue TScriptClassObject::invoke(const std::string & method, std::vector<TScriptValue> & paramList) {
+    TScriptClassObject * theObject = getInstanceObject();
     while(theObject != NULL) {
         TScriptFunction * scriptFunction = theObject->getEngine()->getInternalFunction(method);
         if(scriptFunction != NULL) {
             return TScriptFunctionEngine::applyScriptFunction(theObject->getEngine()->getStatementEngine(),*scriptFunction,paramList);
         }
-        theObject = theObject->superObject.get();
+        theObject = (TScriptClassObject*)theObject->superObject.get();
     }
-    return getEngine()->getStatementEngine()->applyUserFunc(lineno, method, paramList);
+    throw TScriptException(getInstanceObject()->className + u8": no method " + method);
 }
 
-std::string & TScriptObject::getClassName(){
+std::string TScriptClassObject::getObjectName(){
     return className;
 }
 
-TScriptObject & TScriptObject::operator = ( const TScriptObject & ref){
+TScriptClassObject & TScriptClassObject::operator = ( const TScriptClassObject & ref){
     className = ref.className;
     superObject = ref.superObject;
     scriptClassEngine = ref.scriptClassEngine;
@@ -1257,60 +1228,13 @@ TScriptObject & TScriptObject::operator = ( const TScriptObject & ref){
     }
     return *this;
 }
-TScriptClassEngine * TScriptObject::getEngine()
+TScriptClassEngine * TScriptClassObject::getEngine()
 {
     return scriptClassEngine.get();
 }
-void TScriptObject::setEngine(std::shared_ptr<TScriptClassEngine> engine) {
+void TScriptClassObject::setEngine(std::shared_ptr<TScriptClassEngine> engine) {
     scriptClassEngine = engine;
 }
-bool TScriptObject::operator == (const TScriptObject & ref) const{
-    return equals(ref);
-}
-bool TScriptObject::operator != (const TScriptObject & ref) const{
-    return !equals(ref);
-}
-int TScriptObject::compare(const TScriptObject & ref) const{
-    int r = className.compare(ref.className);
-    if(r != 0) return r;
-    return superObject->compare(*ref.superObject);
-}
-bool TScriptObject::operator < (const TScriptObject & ref) const{
-    return compare(ref) == -1;
-}
-bool TScriptObject::operator > (const TScriptObject & ref) const{
-    return compare(ref) == 1;
-}
-bool TScriptObject::equals(const TScriptObject & ref) const{
-    if(className != ref.className) return false;
-    return (*superObject == *ref.superObject);
-}
-
-TScriptObject & TScriptObject::swap(TScriptObject & ref){
-    className.swap(ref.className);
-    superObject.swap(ref.superObject);
-    scriptClassEngine.swap(ref.scriptClassEngine);
-    bool r = hasToString;
-    hasToString = ref.hasToString;
-    ref.hasToString = r;
-    sVal.swap(ref.sVal);
-    return *this;
-}
-std::string & TScriptObject::toString() {
-    if(!hasToString) {
-        hasToString = true;
-        sVal.clear();
-        sVal.append("\"" + className + "\": {");
-
-        //TODO
-
-        sVal.append("}");
-        sVal.append(",");
-        sVal.append(superObject->toString());
-    }
-    return sVal;
-}
-
 /******************************************* TScriptObject End ***************************************************/
 
 
@@ -1358,7 +1282,6 @@ TScriptValue::TScriptValue(const TScriptValue & v) {
     if(v.vtype == TXVALUE_MAP) vMap = v.vMap;
     if(v.vtype == TXVALUE_OBJECT) vObj = v.vObj;
     if(v.vtype == TXVALUE_BYTEARRAY) vByteArray = v.vByteArray;
-    if(v.vtype == TXVALUE_NATIVEOBJECT) vNativeObject = v.vNativeObject;
 }
 TScriptValue::TScriptValue(const std::vector<TScriptValue> & eeList) {
     hasToString = false;
@@ -1372,20 +1295,15 @@ TScriptValue::TScriptValue(const TScriptMap & vv) {
     hasToString = false;
     setMap(vv);
 }
-TScriptValue::TScriptValue(const std::shared_ptr<TScriptObject> & vv) {
-    hasToString = false;
-    vtype = TXVALUE_OBJECT;
-    vObj = vv;
-}
 TScriptValue::TScriptValue(const std::shared_ptr<TScriptByteArray> & vv) {
     hasToString = false;
     vtype = TXVALUE_BYTEARRAY;
     vByteArray = vv;
 }
-TScriptValue::TScriptValue(const std::shared_ptr<TScriptNativeObject> & vv) {
+TScriptValue::TScriptValue(const std::shared_ptr<TScriptObject> & vv) {
     hasToString = false;
-    vtype = TXVALUE_NATIVEOBJECT;
-    vNativeObject = vv;
+    vtype = TXVALUE_OBJECT;
+    vObj = vv;
 }
 std::string TScriptValue::getTypeName(TXVALUE_TYPE type) {
     switch(type) {
@@ -1401,7 +1319,6 @@ std::string TScriptValue::getTypeName(TXVALUE_TYPE type) {
     case TXVALUE_MAP: return "map";
     case TXVALUE_OBJECT: return "class object";
     case TXVALUE_BYTEARRAY: return "byte array";
-    case TXVALUE_NATIVEOBJECT: return "nativeo bject";
     }
     return "unknown";
 }
@@ -1446,9 +1363,6 @@ bool TScriptValue::isObject() const {
 }
 bool TScriptValue::isByteArray() const {
     return vtype == TXVALUE_BYTEARRAY;
-}
-bool TScriptValue::isNativeObject() const {
-    return vtype == TXVALUE_NATIVEOBJECT;
 }
 bool TScriptValue::toBool() const {
     if(vtype == TXVALUE_BOOL) {
@@ -1591,8 +1505,6 @@ std::string & TScriptValue::toString() {
         return vArray->toString();
     } else if(vtype == TXVALUE_MAP) {
         return vMap->toString();
-    } else if(vtype == TXVALUE_OBJECT) {
-        return vObj->toString();
     } else {
         throw TScriptException(getTypeName(vtype) + u8"cannot convert to string");
     }
@@ -1634,12 +1546,6 @@ TScriptByteArray & TScriptValue::getByteArray() {
         throw TScriptException(getTypeName(vtype) + u8"cannot convert to byte array");
     }
     return *vByteArray;
-}
-std::shared_ptr<TScriptNativeObject> TScriptValue::getNativeObject() {
-    if(vtype != TXVALUE_NATIVEOBJECT) {
-        throw TScriptException(getTypeName(vtype) + u8"cannot convert to native object");
-    }
-    return vNativeObject;
 }
 int TScriptValue::indexOf(const std::string & s, int start) const {
     if(vtype != TXVALUE_STRING) {
@@ -1814,12 +1720,6 @@ TScriptValue & TScriptValue::setByteArray(const std::shared_ptr<TScriptByteArray
     vByteArray = v;
     return *this;
 }
-TScriptValue & TScriptValue::setNativeObject(const std::shared_ptr<TScriptNativeObject> & v) {
-    hasToString = false;
-    vtype = TXVALUE_NATIVEOBJECT;
-    vNativeObject = v;
-    return *this;
-}
 TScriptValue & TScriptValue::clear() {
     hasToString = false;
     sVal = "";
@@ -1924,13 +1824,6 @@ TScriptValue & TScriptValue::operator = (const std::shared_ptr<TScriptByteArray>
         vByteArray = v;
         return *this;
 }
-TScriptValue & TScriptValue::operator = (const std::shared_ptr<TScriptNativeObject> & v)
-{
-        hasToString = false;
-        vtype = TXVALUE_NATIVEOBJECT;
-        vNativeObject = v;
-        return *this;
-}
 TScriptValue & TScriptValue::operator = (const TScriptValue & v) {
     vtype = v.vtype;
     hasToString = v.hasToString;
@@ -1944,7 +1837,6 @@ TScriptValue & TScriptValue::operator = (const TScriptValue & v) {
     if(v.vtype == TXVALUE_MAP) vMap = v.vMap;
     if(v.vtype == TXVALUE_OBJECT) vObj = v.vObj;
     if(v.vtype == TXVALUE_BYTEARRAY) vByteArray = v.vByteArray;
-    if(v.vtype == TXVALUE_NATIVEOBJECT) vNativeObject = v.vNativeObject;
     return *this;
 }
 int TScriptValue::compare(const TScriptValue & v) const {
@@ -1963,30 +1855,13 @@ int TScriptValue::compare(const TScriptValue & v) const {
         return vArray->compare(*v.vArray);
     }
     if(vtype == TXVALUE_OBJECT || v.vtype == TXVALUE_OBJECT) {
-        if(vtype != TXVALUE_OBJECT || v.vtype != TXVALUE_OBJECT) {
-            throw TScriptException(getTypeName(vtype) + " compare with" + getTypeName(v.vtype) + " is not supported");
-        }
-        return vObj->compare(*v.vObj);
+        throw TScriptException(getTypeName(vtype) + " compare with" + getTypeName(v.vtype) + " is not supported");
     }
     if(vtype == TXVALUE_MAP || v.vtype == TXVALUE_MAP) {
         if(vtype != TXVALUE_MAP || v.vtype != TXVALUE_MAP) {
             throw TScriptException(getTypeName(vtype) + " compare with" + getTypeName(v.vtype) + " is not supported");
         }
         return vMap->compare(*v.vMap);
-    }
-    if(vtype == TXVALUE_NATIVEOBJECT || v.vtype == TXVALUE_NATIVEOBJECT) {
-        if(vtype != TXVALUE_NATIVEOBJECT || v.vtype != TXVALUE_NATIVEOBJECT) {
-            throw TScriptException(getTypeName(vtype) + " compare with" + getTypeName(v.vtype) + " is not supported");
-        }
-        if(vNativeObject == v.vNativeObject) {
-            return 0;
-        } else {
-            if(vtype == TXVALUE_NATIVEOBJECT) {
-                return -1;
-            } else {
-                return 1;
-            }
-        }
     }
     if(vtype == TXVALUE_STRING || v.vtype == TXVALUE_STRING) {
         if(vtype != TXVALUE_STRING) {
@@ -2896,9 +2771,6 @@ TScriptValue TScriptGlobalEngine::applyUserFunc(int calllineNo, const std::strin
             throw TScriptException(std::string("Line " + std::to_string(calllineNo) + ":" + u8"create ByteArray need non parameters"));
         }
         return TScriptValue(std::shared_ptr<TScriptByteArray>(new TScriptByteArray()));
-    }
-    if(name == "NativeObject") {
-        return std::shared_ptr<TScriptNativeObject>(new TScriptObjectNativeWrap(paramList[0]));
     }
     if(name == "Map") {
         TScriptValue mapVal;
@@ -4129,10 +4001,10 @@ TScriptClassEngine::TScriptClassEngine(TScriptStatementEngine * ownerScriptState
 TScriptClassEngine::~TScriptClassEngine()  {
 }
 
-void TScriptClassEngine::setObject(TScriptObject * scriptObject) {
+void TScriptClassEngine::setObject(TScriptClassObject * scriptObject) {
     vObj = scriptObject;
 }
-TScriptObject * TScriptClassEngine::getObject() {
+TScriptClassObject * TScriptClassEngine::getObject() {
     return vObj;
 }
 bool TScriptClassEngine::hasVar(const std::string & name) {
@@ -4185,7 +4057,7 @@ std::shared_ptr<TScriptObject>  TScriptClassEngine::create(TScriptStatementEngin
     }
 
     std::shared_ptr<TScriptClassEngine> scriptClassEngine(new TScriptClassEngine(ownerScriptStatementEngine, scriptClass));
-    std::shared_ptr<TScriptObject> scriptObject(new TScriptObject());
+    std::shared_ptr<TScriptClassObject> scriptObject(new TScriptClassObject());
     scriptObject->init(scriptClass->className, parentObject);
     scriptObject->setEngine(scriptClassEngine);
     scriptClassEngine->setObject(scriptObject.get());
@@ -6352,11 +6224,7 @@ bool TScriptStatementEngine::setValue(TScriptTreeNode & treeNode, const TScriptV
     } else if(treeNode.get().isProperty()) {
         TScriptValue val = eval(treeNode[0]);
         if(val.isObject()) {
-            return val.getObject()->getEngine()->getStatementEngine()->setVarVal(treeNode[1].get().getToken(), v);
-        }
-        if(val.isNativeObject()) {
-            TScriptNativeObject * scriptNativeObject = val.getNativeObject().get();
-            return scriptNativeObject->set(treeNode[1].get().getToken(), v);
+            return val.getObject()->set(treeNode[1].get().getToken(), v);
         }
         TScriptHelper::throwException(u8"Line " + TStringHelper::number(treeNode[0].getLineNo()) + ": " + u8" unsupported property");
     } else {
@@ -6851,20 +6719,7 @@ TScriptValue TScriptStatementEngine::evalInternalFuncObject(TScriptValue & val, 
     for(int i=2;i<paramCount;i++) {
         paramList.push_back(eval(treeNode[i]));
     }
-    return val.getObject()->invoke(treeNode.getLineNo(),token,paramList);
-}
-TScriptValue TScriptStatementEngine::evalInternalFuncNativeObject(TScriptValue & val, TScriptTreeNode & treeNode) {
-    std::string token = treeNode[1].get().getToken();
-
-    TScriptNativeObject * scriptNativeObject = val.getNativeObject().get();
-
-    std::vector<TScriptValue> paramList;
-    int paramCount = treeNode.getParamCount();
-    for(int i=2;i<paramCount;i++) {
-        paramList.push_back(eval(treeNode[i]));
-    }
-
-    return scriptNativeObject->nativeMethod(token, paramList);
+    return val.getObject()->invoke(token,paramList);
 }
 TScriptValue TScriptStatementEngine::evalInternalFuncChar(TScriptValue & val, TScriptTreeNode & treeNode) {
     std::string token = treeNode[1].get().getToken();
@@ -6934,8 +6789,6 @@ TScriptValue TScriptStatementEngine::evalInternalFunc(TScriptTreeNode &treeNode)
         return evalInternalFuncMap(val, treeNode);
     } else if(val.isObject()) {
         return evalInternalFuncObject(val, treeNode);
-    } else if(val.isNativeObject()) {
-        return evalInternalFuncNativeObject(val, treeNode);
     } else {
         return TScriptHelper::throwException(u8"Line " + TStringHelper::number(treeNode.getLineNo()) + ": " + treeNode[1].get().getToken() + u8" is unsupported");
     }
@@ -7064,10 +6917,7 @@ TScriptValue TScriptStatementEngine::evalPropertyFunc(TScriptTreeNode & treeNode
     }
     TScriptValue val = eval(treeNode[0]);
     if(val.isObject()) {
-        return val.getObject()->getValue(treeNode[1].get().getToken());
-    } else if(val.isNativeObject()) {
-        TScriptNativeObject * scriptNativeObject = val.getNativeObject().get();
-        return scriptNativeObject->get(treeNode[1].get().getToken());
+        return val.getObject()->get(treeNode[1].get().getToken());
     } else {
         return TScriptHelper::throwException(u8"Line " + TStringHelper::number(treeNode.getLineNo()) + ": " + u8" property " + treeNode[1].get().getToken() + u8" is undefined");
     }
@@ -7095,7 +6945,7 @@ TScriptValue TScriptStatementEngine::evalScriptFuncClassFunction(TScriptTreeNode
     TScriptStatementEngine * checkClassStatementEngine = this;
     while(checkClassStatementEngine != NULL) {
         if(checkClassStatementEngine != NULL && checkClassStatementEngine->ownerScriptClassEngine != NULL) {
-            return checkClassStatementEngine->ownerScriptClassEngine->getObject()->invoke(treeNode.getLineNo(),treeNode.get().getScriptTokenLocation().getScriptFunction()->getName(),*paramList.get());
+            return checkClassStatementEngine->ownerScriptClassEngine->getObject()->invoke(treeNode.get().getScriptTokenLocation().getScriptFunction()->getName(),*paramList.get());
         }
         checkClassStatementEngine = checkClassStatementEngine->getOwnerStatementEngine();
     }

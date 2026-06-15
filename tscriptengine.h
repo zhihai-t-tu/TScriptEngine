@@ -55,30 +55,6 @@
 #include <memory>
 #include <algorithm>
 
-/**
- *
-    // Hanoi tower recursive algorithm
-
-    function hannuota(n,a,b,c) {
-      if(n == 0) {
-        return 0;
-      }
-      if(n == 1) {
-        debug(a + "->" + c);
-        return 1;
-      }
-      return hannuota(n - 1, a, c, b) + hannuota(1, a, b, c) + hannuota(n - 1, b, a, c);
-    }
-
-    let n = 13;
-    let timeStart = milliseconds();
-    debug("HNT" + n + ":" + hannuota(n,"a","b","c"));
-    let timeEnd = milliseconds();
-    debug("Elapse milliSeconds:" + (timeEnd - timeStart));
-    debug("finish");
- *
-*/
-
 namespace TScript {
 
 
@@ -288,51 +264,20 @@ private:
     std::string sVal;
 };
 
-class TScriptClassEngine;
+
 class TScriptObject {
 public:
-    TScriptObject();
-    TScriptObject(const TScriptObject & ref);
-    ~TScriptObject();
-    void init(const std::string & className, std::shared_ptr<TScriptObject> & parentObject);
+    virtual ~TScriptObject(){}
 
-    bool setValue(const std::string & name, const TScriptValue & value);
-    TScriptValue getValue(const std::string & name);
-    std::string & getClassName();
+    virtual std::string getObjectName();
 
-    TScriptValue invoke(int lineno, const std::string & method, std::vector<TScriptValue> & paramList);
+    virtual bool set(const std::string & name, const TScriptValue & value);
+    virtual TScriptValue get(const std::string & name);
 
-    TScriptObject & operator = ( const TScriptObject & ref);
-
-    TScriptClassEngine * getEngine();
-    void setEngine(std::shared_ptr<TScriptClassEngine> engine);
-
-    bool operator == (const TScriptObject & ref) const;
-    bool operator != (const TScriptObject & ref) const;
-    int compare(const TScriptObject & ref) const;
-    bool operator < (const TScriptObject & ref) const;
-    bool operator > (const TScriptObject & ref) const;
-    bool equals(const TScriptObject & ref) const;
-
-    TScriptObject & swap(TScriptObject & ref);
-    std::string & toString();
-
-    TScriptObject * getInstanceObject() {
-        return instanceObject;
-    }
-    TScriptObject * getSuperObject() {
-        return superObject.get();
-    }
-private:
-    std::shared_ptr<TScriptClassEngine> scriptClassEngine;
-    std::string className;
-    std::shared_ptr<TScriptObject> superObject;
-    bool hasToString;
-    std::string sVal;
-    TScriptObject * instanceObject;
-
-    friend TScriptClassEngine;
+    virtual TScriptValue invoke(const std::string & name, std::vector<TScriptValue> & valueList) = 0;
 };
+
+
 
 class TScriptByteArray {
 public:
@@ -379,9 +324,7 @@ private:
     int dataLen;
 };
 
-class TScriptNativeObject;
-//曾考虑是否需要将字符串从TScriptValue，但由于仅仅是一个字符串，而且经常会与数字混在一起运算，所以依然放在TScriptValue了
-//是否需要对字符串运算进行严格限制，在以后再考虑。
+
 class TScriptValue {
 public:
     TScriptValue();
@@ -395,9 +338,8 @@ public:
     TScriptValue(const std::vector<TScriptValue> & eeList);
     TScriptValue(const TScriptArray & vv);
     TScriptValue(const TScriptMap & vv);
-    TScriptValue(const std::shared_ptr<TScriptObject> & vv);
     TScriptValue(const std::shared_ptr<TScriptByteArray> & vv);
-    TScriptValue(const std::shared_ptr<TScriptNativeObject> & vv);
+    TScriptValue(const std::shared_ptr<TScriptObject> & vv);
 
     enum TXVALUE_TYPE {
         TXVALUE_INVALID = 0,
@@ -412,7 +354,6 @@ public:
         TXVALUE_MAP = 9,   //{}
         TXVALUE_OBJECT = 10,   //class instance
         TXVALUE_BYTEARRAY = 11,//bytearray
-        TXVALUE_NATIVEOBJECT = 12,//TScriptNativeObject instance
     };
 
     static std::string getTypeName(TXVALUE_TYPE type);
@@ -431,7 +372,6 @@ public:
     bool isMap() const;
     bool isObject() const;
     bool isByteArray() const;
-    bool isNativeObject() const;
 
     bool toBool() const;
     int toInt() const;
@@ -443,9 +383,8 @@ public:
     std::string & getString();
     TScriptArray & getArray();
     TScriptMap & getMap();
-    std::shared_ptr<TScriptObject> getObject();
     TScriptByteArray & getByteArray();
-    std::shared_ptr<TScriptNativeObject> getNativeObject();
+    std::shared_ptr<TScriptObject> getObject();
 
     int indexOf(const std::string & s, int start = 0) const;
     int indexOf(const char c, int start = 0) const;
@@ -473,9 +412,8 @@ public:
     TScriptValue & setArray(const std::vector<TScriptValue> & eeList);
     TScriptValue & setArray(const TScriptArray & v);
     TScriptValue & setMap(const TScriptMap & v);
-    TScriptValue & setObject(const std::shared_ptr<TScriptObject> & v);
     TScriptValue & setByteArray(const std::shared_ptr<TScriptByteArray> & v);
-    TScriptValue & setNativeObject(const std::shared_ptr<TScriptNativeObject> & v);
+    TScriptValue & setObject(const std::shared_ptr<TScriptObject> & v);
 
     TScriptValue & clear();
     bool equals(const TScriptValue & ee) const;
@@ -498,9 +436,8 @@ public:
     TScriptValue & operator = (const TScriptValue & v);
     TScriptValue & operator = (const TScriptArray & v);
     TScriptValue & operator = (const TScriptMap & v);
-    TScriptValue & operator = (const std::shared_ptr<TScriptObject> & v);
     TScriptValue & operator = (const std::shared_ptr<TScriptByteArray>& v);
-    TScriptValue & operator = (const std::shared_ptr<TScriptNativeObject>& v);
+    TScriptValue & operator = (const std::shared_ptr<TScriptObject>& v);
 
     static TScriptValue fromString(const std::string & s);
 
@@ -520,19 +457,6 @@ private:
     std::shared_ptr<TScriptMap> vMap;
     std::shared_ptr<TScriptObject> vObj;
     std::shared_ptr<TScriptByteArray> vByteArray;
-    std::shared_ptr<TScriptNativeObject> vNativeObject;
-};
-
-class TScriptNativeObject {
-public:
-    virtual ~TScriptNativeObject(){}
-
-    virtual std::string getObjectName();
-
-    virtual bool set(const std::string & name, const TScriptValue & value);
-    virtual TScriptValue get(const std::string & name);
-
-    virtual TScriptValue nativeMethod(const std::string & name, std::vector<TScriptValue> & valueList) = 0;
 };
 
 typedef std::function<TScriptValue()> user_func0;

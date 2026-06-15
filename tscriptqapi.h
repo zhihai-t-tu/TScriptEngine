@@ -7,12 +7,12 @@
 
 using namespace TScript;
 
-class TScriptNativeThreadObject : public TScriptNativeObject {
+class TScriptNativeThreadObject : public TScriptObject {
 public:
-    TScriptNativeThreadObject(const std::shared_ptr<TScriptNativeObject> & scriptThreadObject) : scriptThreadObject(scriptThreadObject) {
+    TScriptNativeThreadObject(const std::shared_ptr<TScriptObject> & scriptThreadObject) : scriptThreadObject(scriptThreadObject) {
         thread = std::shared_ptr<XThread::XThread>(new XThread::XThread([this]() {
             std::vector<TScriptValue> valueList;
-            this->scriptThreadObject->nativeMethod("run",valueList);
+            this->scriptThreadObject->invoke("run",valueList);
         }));
     }
     virtual ~TScriptNativeThreadObject(){}
@@ -59,7 +59,7 @@ public:
         throw TScriptException(getObjectName() + u8"." + name + " is unsupported");
     }
 
-    virtual TScriptValue nativeMethod(const std::string & name, std::vector<TScriptValue> & valueList) override {
+    virtual TScriptValue invoke(const std::string & name, std::vector<TScriptValue> & valueList) override {
         if(name == "start") {
             thread->start();
             return true;
@@ -76,13 +76,13 @@ public:
         throw TScriptException(getObjectName() + u8"." + name + " is unsupported");
     }
 private:
-    std::shared_ptr<TScriptNativeObject> scriptThreadObject;
+    std::shared_ptr<TScriptObject> scriptThreadObject;
     std::shared_ptr<XThread::XThread> thread;
 };
 
 
 
-class TScriptNativeMutexObject : public TScriptNativeObject {
+class TScriptNativeMutexObject : public TScriptObject {
 public:
     TScriptNativeMutexObject(){}
     virtual ~TScriptNativeMutexObject(){
@@ -100,7 +100,7 @@ public:
         }
         throw TScriptException(getObjectName() + u8"." + name + " is unsupported");
     }
-    virtual TScriptValue nativeMethod(const std::string & name, std::vector<TScriptValue> & valueList) override {
+    virtual TScriptValue invoke(const std::string & name, std::vector<TScriptValue> & valueList) override {
         if(name == "lock") {
             mutex.lock();
         } else if(name == "unlock") {

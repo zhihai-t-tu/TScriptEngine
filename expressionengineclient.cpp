@@ -4,7 +4,7 @@
 
 using namespace TScript;
 
-class TScriptNativeQMessageObject: public TScriptNativeObject
+class TScriptNativeQMessageObject: public TScriptObject
 {
 public:
     TScriptNativeQMessageObject(TScriptEngineClient * scriptEngineClient, FFuncExec funcExec):scriptEngineClient(scriptEngineClient),funcExec(funcExec) {
@@ -15,7 +15,7 @@ public:
         return "QMessageBoxNativeObject";
     }
 
-    virtual TScriptValue nativeMethod(const std::string & name, std::vector<TScriptValue> & valueList) override {
+    virtual TScriptValue invoke(const std::string & name, std::vector<TScriptValue> & valueList) override {
         if(name == "information") {
             if(funcExec != NULL) {
                 funcExec(1, [this,&valueList]() {
@@ -72,18 +72,18 @@ TScriptEngineClient::TScriptEngineClient(FOutput foutput):foutput(foutput)
         return v;
     });
     scriptEngine.bindUserFunc(u8"QMessageBox", [this]()->TScript::TScriptValue {
-        TScript::TScriptValue v(std::shared_ptr<TScriptNativeObject>(new TScriptNativeQMessageObject(this, [this](int cmd, FFunc func) {
+        TScript::TScriptValue v(std::shared_ptr<TScriptObject>(new TScriptNativeQMessageObject(this, [this](int cmd, FFunc func) {
 			if (fFuncExec != NULL) {
 				fFuncExec(cmd, func);
 			}
         })));
 		return v;
 	});
-    scriptEngine.bindUserFunc(u8"CreateNativeThread", [](TScript::TScriptValue & threadObject)->TScript::TScriptValue{
-        return std::shared_ptr<TScriptNativeObject>(new TScriptNativeThreadObject(threadObject.getNativeObject()));
+    scriptEngine.bindUserFunc(u8"Thread", [](TScript::TScriptValue & threadObject)->TScript::TScriptValue{
+        return std::shared_ptr<TScriptObject>(new TScriptNativeThreadObject(threadObject.getObject()));
     });
-    scriptEngine.bindUserFunc(u8"CreateNativeMutex", []()->TScript::TScriptValue{
-        return std::shared_ptr<TScriptNativeObject>(new TScriptNativeMutexObject());
+    scriptEngine.bindUserFunc(u8"Mutex", []()->TScript::TScriptValue{
+        return std::shared_ptr<TScriptObject>(new TScriptNativeMutexObject());
     });
 }
 
