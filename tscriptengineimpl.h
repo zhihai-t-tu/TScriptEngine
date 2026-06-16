@@ -207,12 +207,17 @@ private:
 class TScriptClassObject : public TScriptObject {
 public:
     TScriptClassObject();
-    ~TScriptClassObject() override;;
+    ~TScriptClassObject() override;
+
+    void setThis(std::shared_ptr<TScriptClassObject> & thisObject);
+    TScriptValue getThis();
     void init(const std::string & className, std::shared_ptr<TScriptObject> & parentObject);
 
     virtual bool set(const std::string & name, const TScriptValue & value) override;
     virtual TScriptValue get(const std::string & name) override;
     virtual std::string getObjectName() override;
+
+    virtual int check(const std::string & name) override;
 
     virtual TScriptValue invoke(const std::string & method, std::vector<TScriptValue> & paramList) override;
 
@@ -228,6 +233,7 @@ public:
         return (TScriptClassObject*)superObject.get();
     }
 private:
+    std::weak_ptr<TScriptClassObject> weakThis;
     std::shared_ptr<TScriptClassEngine> scriptClassEngine;
     std::string className;
     std::shared_ptr<TScriptObject> superObject;
@@ -556,6 +562,7 @@ public:
     //op包含setSign
     bool isOp(const std::string & sign);
     bool isSetOpSign(const std::string & sign);
+    bool isOverrideSign(const std::string & sign);
     bool isSignPrefix(const std::string & sign);
     bool isCompareOp(const TScriptExpression::TXSIGN_TYPE op);
     bool isSetOp(const TScriptExpression::TXSIGN_TYPE op);
@@ -577,6 +584,7 @@ private:
     std::map<std::string,int> sign2opMap;
     std::map<int,std::string> op2signMap;
     std::vector<std::string> signsetList;
+    std::vector<std::string> signOverrideList;
     std::map<std::string,std::string> sign2simpleMap;
 };
 /****************************************** Class  TScriptHelper End *********************************************/
@@ -773,6 +781,7 @@ public:
     TScriptValue getVarVal(const std::string & name);
     bool setVarVal(const std::string & name, const TScriptValue & value);
     TScriptValue getVarVal(TScriptTreeNode & treeNode);
+    TScriptValue getThisObject(TScriptTreeNode & treeNode);
     bool setVarVal(TScriptTreeNode & treeNode, const TScriptValue & value);
 
     virtual TScriptModuleEngine * getScriptModuleEngine(TScriptModule * scriptModule);

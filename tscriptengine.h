@@ -270,6 +270,7 @@ public:
     virtual ~TScriptObject(){}
 
     virtual std::string getObjectName();
+    virtual int check(const std::string & name);
 
     virtual bool set(const std::string & name, const TScriptValue & value);
     virtual TScriptValue get(const std::string & name);

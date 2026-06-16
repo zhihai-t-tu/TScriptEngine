@@ -96,7 +96,9 @@ bool TScriptObject::set(const std::string & name, const TScriptValue & value) {
 TScriptValue TScriptObject::get(const std::string & name) {
     throw TScriptException(getObjectName() + " has no property " + name);
 }
-
+int TScriptObject::check(const std::string & name) {
+    return -1;
+}
 void relocationSymbol(TScriptTokenLocations & scriptTokenLocations, TScriptTreeNode & scriptTreeNode) {
     TScriptExpression & expression = scriptTreeNode.get();
     if(expression.isFunc()) {
@@ -1166,7 +1168,16 @@ TScriptClassObject::~TScriptClassObject() {
     }
     scriptClassEngine = nullptr;
 }
-
+void TScriptClassObject::setThis(std::shared_ptr<TScriptClassObject> & thisObject) {
+    weakThis = thisObject;
+}
+TScriptValue TScriptClassObject::getThis() {
+    if(weakThis._Get() == NULL) {
+        throw TScriptException(className + u8": invalid this ptr ");
+    }
+    std::shared_ptr<TScriptObject> thisObject = weakThis.lock();
+    return thisObject;
+}
 void TScriptClassObject::init(const std::string & className, std::shared_ptr<TScriptObject> & parentObject) {
     this->className = className;
     this->superObject = parentObject;
@@ -1199,6 +1210,20 @@ TScriptValue TScriptClassObject::get(const std::string & name){
     }
 
     throw TScriptException(getInstanceObject()->className + u8": no property " + name);
+}
+int TScriptClassObject::check(const std::string & name) {
+    TScriptClassObject * theObject = getInstanceObject();
+    while(theObject != NULL) {
+        TScriptFunction * scriptFunction = theObject->getEngine()->getInternalFunction(name);
+        if(scriptFunction != NULL) {
+            return 2;
+        }
+        if(theObject->getEngine()->hasVar(name)) {
+            return 1;
+        }
+        theObject = (TScriptClassObject*)theObject->superObject.get();
+    }
+    return -1;
 }
 TScriptValue TScriptClassObject::invoke(const std::string & method, std::vector<TScriptValue> & paramList) {
     TScriptClassObject * theObject = getInstanceObject();
@@ -2631,6 +2656,18 @@ TScriptHelper::TScriptHelper() {
     sign2simpleMap["&&="] = "&&";
     sign2simpleMap["||="] = "||";
 
+    signOverrideList.push_back("+");
+    signOverrideList.push_back("-");
+    signOverrideList.push_back("*");
+    signOverrideList.push_back("/");
+    signOverrideList.push_back("%");
+    signOverrideList.push_back("<");
+    signOverrideList.push_back("<=");
+    signOverrideList.push_back(">");
+    signOverrideList.push_back(">=");
+    signOverrideList.push_back("==");
+    signOverrideList.push_back("!=");
+    signOverrideList.push_back("<<");
 }
 
 static TScriptHelper * scriptHelperInstance = NULL;
@@ -2665,6 +2702,9 @@ bool TScriptHelper::isOp(const std::string & sign) {
 }
 bool TScriptHelper::isSetOpSign(const std::string & sign) {
     return TCollectHelper::contains(signsetList,sign);
+}
+bool TScriptHelper::isOverrideSign(const std::string & sign) {
+    return TCollectHelper::contains(signOverrideList,sign);
 }
 bool TScriptHelper::isSignPrefix(const std::string & sign) {
     for(const std::string & s: opList) {
@@ -4054,6 +4094,7 @@ std::shared_ptr<TScriptObject>  TScriptClassEngine::create(TScriptStatementEngin
     std::shared_ptr<TScriptClassObject> scriptObject(new TScriptClassObject());
     scriptObject->init(scriptClass->className, parentObject);
     scriptObject->setEngine(scriptClassEngine);
+    scriptObject->setThis(scriptObject);
     scriptClassEngine->setObject(scriptObject.get());
 
     scriptClassEngine->scriptStatementEngine = std::shared_ptr<TScriptStatementEngine>(new TScriptStatementEngine(ownerScriptStatementEngine->scriptModuleEngine, ownerScriptStatementEngine, scriptClass->scriptStatement.get()));
@@ -5089,12 +5130,15 @@ void TScriptHelper::expressionTokenToStatmentItemList(const std::vector<LineNoSt
                     statmentTokenList.push_back(token);
                     continue;
                 }
-                if(!TScriptHelper::getInstance()->isToken(tt)) {
+                if(!(TScriptHelper::getInstance()->isToken(tt) || TScriptHelper::getInstance()->isOverrideSign(tt))) {
                     throw TScriptException(std::string(u8"Line " + TStringHelper::number(token.getLineNo()) + ": " + u8" function name " + tt.get() + " is error"));
                 }
                 if(statmentTokenList.size() == 0) {
                     statmentTokenList.push_back(token);
                 } else {
+                    if(TScriptHelper::getInstance()->isOverrideSign(tt)) {
+                        throw TScriptException(std::string(u8"Line " + TStringHelper::number(token.getLineNo()) + ": " + u8" function name " + tt.get() + " is error"));
+                    }
                     LineNoString<std::string> ttt("~" + tt.get(), tt.getLineNo());
                     statmentTokenList.clear();
                     statmentTokenList.push_back(ttt);
@@ -6226,11 +6270,24 @@ bool TScriptStatementEngine::setValue(TScriptTreeNode & treeNode, const TScriptV
     }
     return true;
 }
+TScriptValue TScriptStatementEngine::getThisObject(TScriptTreeNode & treeNode) {
+    TScriptStatementEngine * statementEngine = this;
+    while(statementEngine != NULL) {
+        if(statementEngine->ownerScriptClassEngine != NULL) {
+            return statementEngine->ownerScriptClassEngine->getObject()->getInstanceObject()->getThis();
+        }
+        statementEngine = statementEngine->ownerScriptStatementEngine;
+    }
+    return TScriptHelper::throwException(u8"Line " + TStringHelper::number(treeNode.getLineNo()) + ": " + u8" this is wrong usage here");
+}
 TScriptValue TScriptStatementEngine::getVarVal(TScriptTreeNode & treeNode) {
     if(treeNode.get().isToken() || treeNode.get().isVariable()) {
         std::string & name = treeNode.get().getToken();
         if(name == "") {
             return TScriptHelper::throwException(u8"Line " + TStringHelper::number(treeNode.getLineNo()) + ": " + u8" express has error");
+        }
+        if(name == "this") {
+            return getThisObject(treeNode);
         }
         if(treeNode.get().getScriptTokenLocation().scriptModule != NULL) {
             TScriptModuleEngine * scriptModuleEngine = getScriptModuleEngine(treeNode.get().getScriptTokenLocation().scriptModule);
@@ -6856,6 +6913,7 @@ TScriptValue TScriptStatementEngine::evalOpFuncOr(TScriptTreeNode & treeNode) {
     }
 }
 TScriptValue TScriptStatementEngine::evalOpFuncSign(TScriptTreeNode & treeNode) {
+    std::shared_ptr<TScriptObject> scriptObject;
     std::auto_ptr<std::vector<TScriptValue> > paramList(new std::vector<TScriptValue>());
     if(treeNode.getParamCount() == 1) {
         if(treeNode.get().getOp() == TScriptExpression::TXSIGN_ADD) {
@@ -6867,6 +6925,15 @@ TScriptValue TScriptStatementEngine::evalOpFuncSign(TScriptTreeNode & treeNode) 
     } else {
         for(int i=0;i<treeNode.getParamCount();i++) {
             paramList->push_back(eval(treeNode[i]));
+        }
+        if(treeNode.getParamCount() == 2) {
+            if((*paramList)[0].isObject()) {
+                scriptObject = (*paramList)[0].getObject();
+                if(scriptObject->check(TScriptHelper::getInstance()->op2Sign(treeNode.get().getOp())) == 2) {
+                    paramList->erase(paramList->begin());
+                    return scriptObject->invoke(TScriptHelper::getInstance()->op2Sign(treeNode.get().getOp()),*paramList);
+                }
+            }
         }
     }
     return applyUserFunc(treeNode.getLineNo(), TScriptHelper::getInstance()->op2Sign(treeNode.get().getOp()), *paramList);

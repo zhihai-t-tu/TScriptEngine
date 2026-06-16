@@ -22,6 +22,10 @@ class ClassA
 	function displayClass() {
 		displayClass1();
 	}
+   function << (v) {
+      valueName += " append [" + v + "]";
+      return this;
+   }
 };
 class ClassB: ClassA
 {
@@ -44,6 +48,7 @@ class ClassB: ClassA
 debug("hello");
 {
 	let bObj = ClassB("Check");
+	bObj << "Hello" << "Ketty";
 	bObj.displayClass();
 }
 output("finish");
