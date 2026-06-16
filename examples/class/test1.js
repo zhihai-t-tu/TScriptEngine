@@ -39,7 +39,7 @@ class ClassB: ClassA
       debug("ClassB Done");
 	}
 	function displayClass1() {
-		displayClassA();
+		this.displayClassA();
 	}
    function displayClassB() {
        debug("ClassB:" + valueName);

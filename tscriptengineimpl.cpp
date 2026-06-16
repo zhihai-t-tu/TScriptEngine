@@ -4045,7 +4045,8 @@ bool TScriptClassEngine::hasVar(const std::string & name) {
     return TCollectHelper::contains(scriptClass->scriptStatement->valueNameList,name);
 }
 TScriptFunction * TScriptClassEngine::getInternalFunction(const std::string & name) {
-    return scriptClass->scriptStatement->findScriptFunction(name);
+    std::shared_ptr<TScriptFunction> scriptFunction = scriptClass->scriptStatement->scriptFunctionMap[name];
+    return scriptFunction.get();
 }
 void TScriptClassEngine::applyInitFunc(std::vector<TScriptValue> & paramList) {
     TScriptFunction * scriptFunction = scriptStatementEngine->getScriptStatement()->findScriptFunction(scriptClass->className);
