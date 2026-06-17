@@ -1661,42 +1661,70 @@ char TScriptValue::operator [](int pos) const {
 TScriptValue & TScriptValue::setNull() {
     hasToString = false;
     vtype = TXVALUE_NULL;
+    vArray = NULL;
+    vMap = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::setChar(char c) {
     hasToString = false;
     vtype = TXVALUE_CHAR;
     cVal = c;
+    vArray = NULL;
+    vMap = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::setBool(bool v) {
     hasToString = false;
     vtype = TXVALUE_BOOL;
     iVal = (v)?1:0;
+    vArray = NULL;
+    vMap = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::setInt(int v) {
     hasToString = false;
     vtype = TXVALUE_INT;
     iVal = v;
+    vArray = NULL;
+    vMap = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::setLongLong(long long v) {
     hasToString = false;
     vtype = TXVALUE_LONGLONG;
     lVal = v;
+    vArray = NULL;
+    vMap = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::setDouble(double v) {
     hasToString = false;
     vtype = TXVALUE_DOUBLE;
     dVal = v;
+    vArray = NULL;
+    vMap = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::setString(const std::string & v) {
     hasToString = false;
     vtype = TXVALUE_STRING;
     sVal = v;
+    vArray = NULL;
+    vMap = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::setArray(const std::vector<TScriptValue> & eeList) {
@@ -1706,16 +1734,23 @@ TScriptValue & TScriptValue::setArray(const std::vector<TScriptValue> & eeList) 
         vArray = std::shared_ptr<TScriptArray>(new TScriptArray());
     }
     *vArray = eeList;
+
+    vMap = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::setArray(const TScriptArray & v) {
     hasToString = false;
     vtype = TXVALUE_ARRAY;
-    vtype = TXVALUE_ARRAY;
     if(vArray == nullptr) {
         vArray = std::shared_ptr<TScriptArray>(new TScriptArray());
     }
     *vArray = v;
+
+    vMap = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::setMap(const TScriptMap & v) {
@@ -1725,18 +1760,50 @@ TScriptValue & TScriptValue::setMap(const TScriptMap & v) {
         vMap = std::shared_ptr<TScriptMap>(new TScriptMap());
     }
     *vMap = v;
+
+    vArray = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
+    return *this;
+}
+TScriptValue & TScriptValue::setArray(const std::shared_ptr<TScriptArray> & v) {
+    hasToString = false;
+    vtype = TXVALUE_ARRAY;
+    vArray = v;
+
+    vMap = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
+    return *this;
+}
+TScriptValue & TScriptValue::setMap(const std::shared_ptr<TScriptMap> & v) {
+    hasToString = false;
+    vtype = TXVALUE_MAP;
+    vMap = v;
+
+    vArray = NULL;
+    vObj = NULL;
+    vByteArray = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::setObject(const std::shared_ptr<TScriptObject> & v) {
     hasToString = false;
     vtype = TXVALUE_OBJECT;
     vObj = v;
+
+    vByteArray = NULL;
+    vArray = NULL;
+    vMap = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::setByteArray(const std::shared_ptr<TScriptByteArray> & v) {
     hasToString = false;
     vtype = TXVALUE_BYTEARRAY;
     vByteArray = v;
+
+    vArray = NULL;
+    vMap = NULL;
+    vObj = NULL;
     return *this;
 }
 TScriptValue & TScriptValue::clear() {
@@ -1829,33 +1896,39 @@ TScriptValue & TScriptValue::operator = (const TScriptMap & v) {
     setMap(v);
     return *this;
 }
+TScriptValue & TScriptValue::operator = (const std::shared_ptr<TScriptArray> & v) {
+    setArray(v);
+    return *this;
+}
+TScriptValue & TScriptValue::operator = (const std::shared_ptr<TScriptMap> & v) {
+    setMap(v);
+    return *this;
+}
 TScriptValue & TScriptValue::operator = (const std::shared_ptr<TScriptObject> & v)
 {
-        hasToString = false;
-        vtype = TXVALUE_OBJECT;
-        vObj = v;
-        return *this;
+    hasToString = false;
+    setObject(v);
+    return *this;
 }
 TScriptValue & TScriptValue::operator = (const std::shared_ptr<TScriptByteArray> & v)
 {
-        hasToString = false;
-        vtype = TXVALUE_BYTEARRAY;
-        vByteArray = v;
-        return *this;
+    hasToString = false;
+    setByteArray(v);
+    return *this;
 }
 TScriptValue & TScriptValue::operator = (const TScriptValue & v) {
     vtype = v.vtype;
     hasToString = v.hasToString;
-    if(v.vtype == TXVALUE_CHAR) cVal = v.cVal;
-    if(v.vtype == TXVALUE_INT) iVal = v.iVal;
-    if(v.vtype == TXVALUE_LONGLONG) lVal = v.lVal;
-    if(v.vtype == TXVALUE_BOOL) iVal = v.iVal;
-    if(v.vtype == TXVALUE_DOUBLE) dVal = v.dVal;
-    if(hasToString || v.vtype == TXVALUE_STRING) sVal = v.sVal;
-    if(v.vtype == TXVALUE_ARRAY) vArray = v.vArray;
-    if(v.vtype == TXVALUE_MAP) vMap = v.vMap;
-    if(v.vtype == TXVALUE_OBJECT) vObj = v.vObj;
-    if(v.vtype == TXVALUE_BYTEARRAY) vByteArray = v.vByteArray;
+    if(v.vtype == TXVALUE_CHAR) return setChar(v.cVal);
+    if(v.vtype == TXVALUE_INT) return setInt(v.iVal);
+    if(v.vtype == TXVALUE_LONGLONG) return setLongLong(v.lVal);
+    if(v.vtype == TXVALUE_BOOL) setBool(v.iVal);
+    if(v.vtype == TXVALUE_DOUBLE) setDouble(v.dVal);
+    if(v.vtype == TXVALUE_STRING) setString(v.sVal);
+    if(v.vtype == TXVALUE_ARRAY) setArray(v.vArray);
+    if(v.vtype == TXVALUE_MAP) setMap(v.vMap);
+    if(v.vtype == TXVALUE_OBJECT) setObject(v.vObj);
+    if(v.vtype == TXVALUE_BYTEARRAY) setByteArray(v.vByteArray);
     return *this;
 }
 int TScriptValue::compare(const TScriptValue & v) const {

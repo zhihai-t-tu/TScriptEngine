@@ -413,6 +413,8 @@ public:
     TScriptValue & setArray(const std::vector<TScriptValue> & eeList);
     TScriptValue & setArray(const TScriptArray & v);
     TScriptValue & setMap(const TScriptMap & v);
+    TScriptValue & setArray(const std::shared_ptr<TScriptArray> & v);
+    TScriptValue & setMap(const std::shared_ptr<TScriptMap> & v);
     TScriptValue & setByteArray(const std::shared_ptr<TScriptByteArray> & v);
     TScriptValue & setObject(const std::shared_ptr<TScriptObject> & v);
 
@@ -437,6 +439,8 @@ public:
     TScriptValue & operator = (const TScriptValue & v);
     TScriptValue & operator = (const TScriptArray & v);
     TScriptValue & operator = (const TScriptMap & v);
+    TScriptValue & operator = (const std::shared_ptr<TScriptArray> & v);
+    TScriptValue & operator = (const std::shared_ptr<TScriptMap> & v);
     TScriptValue & operator = (const std::shared_ptr<TScriptByteArray>& v);
     TScriptValue & operator = (const std::shared_ptr<TScriptObject>& v);
 

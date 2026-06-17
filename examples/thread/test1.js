@@ -3,6 +3,9 @@ class Runnable {
 	function Runnable(m) {
 		mutex = m;
 	}
+	function ~Runnable() {
+		debug("Done2");
+	}
 	function run() {
 		debug("Runnable1");
 		mutex.lock();
@@ -13,16 +16,18 @@ class Runnable {
 let mutex = Mutex();
 debug("main1");
 mutex.lock();
-
+let tlist = Array();
+{
 let t = Thread(Runnable(mutex));
 t.start();
 sleep(1);
 debug("main2");
-sleep(1);
 mutex.unlock();
-sleep(1);
 debug("main3");
+tlist.push_back(t);
+//t.wait();
+}
 
-t.wait();
-
+sleep(2);
+debug("main4");
 
