@@ -84,7 +84,7 @@ isNull(v)
 时间函数：
 milliseconds(),datetime(),date(),time()
 系统函数：
-getProjectPath()
+getBaseDir()
 内置对象生成函数：
 Array(),ByteArray(),Map(k1,v1,k2,v2,...)
 ```
